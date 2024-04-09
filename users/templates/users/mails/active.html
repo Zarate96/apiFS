@@ -1,0 +1,12 @@
+{% autoescape off %}
+
+
+Estimado {{user.username}}
+
+Porfavor utilize el siguiente link para activar su cuenta
+
+
+{{protocol}}://{{domain}}{% url 'activate' uidb64=uid token=token %}
+
+
+{% endautoescape %}
