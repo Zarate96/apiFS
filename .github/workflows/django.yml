@@ -17,4 +17,4 @@ jobs:
 
       - name: Deploy to IONOS VPS
         run: |
-          ssh user@74.208.123.242 "cd /root/apiFS && git pull && service apiFs restart"
+          ssh root@74.208.123.242 "cd /root/apiFS && git pull && service apiFs restart"
