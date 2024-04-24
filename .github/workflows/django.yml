@@ -1,0 +1,20 @@
+name: Deploy to IONOS VPS
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to IONOS VPS
+        run: |
+          ssh user@your-vps-ip-address "cd /root/apiFS && git pull && service apiFs restart"
