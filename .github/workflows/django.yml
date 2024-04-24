@@ -10,11 +10,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.5.4
+      - name: Deploy code to VPS
+        uses: appleboy/ssh-action@master
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd /root/apiFS
+            git pull origin master
+            service apiFs restart
+            # Run any additional commands to build or restart your API service
 
-      - name: Deploy to IONOS VPS
-        run: |
-          ssh root@74.208.123.242 "cd /root/apiFS && git pull && service apiFs restart"
