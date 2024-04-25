@@ -1,4 +1,4 @@
-name: Deploy to IONOS VPS
+name: Deploy to IONOS VPS V2
 on:
   push:
     branches: [ "master" ]
