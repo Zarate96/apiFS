@@ -6,38 +6,38 @@ from django.utils.text import slugify
 from django.contrib.auth.models import AbstractUser
 
 COUNTRIES = (
-    ("AG", "Aguascalientes"),
-    ("BC", "Baja California"),
-    ("BS", "Baja California Sur"),
-    ("CM", "Campeche"),
-    ("CS", "Chiapas"),
-    ("CH", "Chihuahua"),
-    ("CO", "Coahuila"),
-    ("CL", "Colima"),
-    ("DF", "Ciudad de Mexico"),
-    ("DG", "Durango"),
-    ("GT", "Guanajuato"),
-    ("GR", "Guerrero"),
-    ("HG", "Hidalgo"),
-    ("JA", "Jalisco"),
-    ("MX", "Mexico"),
-    ("MI", "Michoacan"),
-    ("MO", "Morelos"),
-    ("NA", "Nayarit"),
-    ("NL", "Nuevo Leon"),
-    ("OA", "Oaxaca"),
-    ("PU", "Puebla"),
-    ("QT", "Queretaro"),
-    ("QR", "Quintana Roo"),
-    ("SL", "San Luis Potosi"),
-    ("SI", "Sinaloa"),
-    ("SO", "Sonora"),
-    ("TB", "Tabasco"),
-    ("TM", "Tamaulipas"),
-    ("TL", "Tlaxcala"),
-    ("VE", "Veracruz"),
-    ("YU", "Yucatan"),
-    ("ZA", "Zacatecas"),
+    ('Aguascalientes','Aguascalientes'),
+    ('Baja California','Baja California'),
+    ('Baja California Sur','Baja California Sur'),
+    ('Campeche','Campeche'),
+    ('Coahuila de Zaragoza','Coahuila de Zaragoza'),
+    ('Colima','Colima'),
+    ('Chiapas','Chiapas'),
+    ('Chihuahua','Chihuahua'),
+    ('CDMX','CDMX'),
+    ('Durango','Durango'),
+    ('Guanajuato','Guanajuato'),
+    ('Guerrero','Guerrero'),
+    ('Hidalgo','Hidalgo'),
+    ('Jalisco','Jalisco'),
+    ('México','México'),
+    ('Michoacán de Ocampo','Michoacán de Ocampo'),
+    ('Morelos','Morelos'),
+    ('Nayarit','Nayarit'),
+    ('Nuevo León','Nuevo León'),
+    ('Oaxaca','Oaxaca'),
+    ('Puebla','Puebla'),
+    ('Querétaro','Querétaro'),
+    ('Quintana Roo','Quintana Roo'),
+    ('San Luis Potosí','San Luis Potosí'),
+    ('Sinaloa','Sinaloa'),
+    ('Sonora','Sonora'),
+    ('Tabasco','Tabasco'),
+    ('Tamaulipas','Tamaulipas'),
+    ('Tlaxcala','Tlaxcala'),
+    ('Veracruz de Ignacio de la Llave','Veracruz de Ignacio de la Llave'),
+    ('Yucatán','Yucatán'),
+    ('Zacatecas','Zacatecas'),
 )
 
 
@@ -54,7 +54,7 @@ class MyUser(AbstractUser):
         default=False,
         help_text="Las empresas son personas morales",
     )
-    slug = models.SlugField(blank=True)
+    slug = models.SlugField(unique=True, blank=True, max_length=100, allow_unicode=True)
     
     class Meta:
         db_table = 'auth_user'
@@ -64,7 +64,7 @@ class MyUser(AbstractUser):
         return self.username
     
     def save(self, *args, **kwargs):
-        self.slug = f"{self.username}"
+        self.slug = slugify(self.username)
         super(MyUser, self).save(*args, **kwargs)
     
     @property
@@ -105,10 +105,10 @@ class Cliente(models.Model):
     municipio = models.CharField(verbose_name="Municipio o alcadía", max_length=100,)
     cp = models.CharField(verbose_name="Código postal",max_length=100,)
     estado = models.CharField(verbose_name="Estado", choices=COUNTRIES, max_length=40)
-    slug = models.SlugField(blank=True)
     conektaId = models.CharField(verbose_name="Conekta ID", max_length=30, blank=True)
     es_validado = models.BooleanField(default=False)
     file_import = models.FileField(upload_to='csvImports', max_length=254, default='default.csv')
+    direccion_google = models.CharField(max_length=200, blank=True, null=True)
     
     class Meta:
         verbose_name = "Cliente"
@@ -116,10 +116,6 @@ class Cliente(models.Model):
     
     def __str__(self):
         return str(self.user.username)
-
-    def save(self, *args, **kwargs):
-        self.slug = f"{self.user.username}"
-        super(Cliente, self).save(*args, **kwargs)
     
     @property
     def has_info(self):
@@ -235,7 +231,6 @@ class Transportista(models.Model):
     es_validado = models.BooleanField(default=False)
     es_verificado = models.BooleanField(default=False)
     es_activo = models.BooleanField(default=False)
-    slug = models.SlugField(unique=True, blank=True, max_length=100, allow_unicode=True)
 
     class Meta:
         verbose_name = "Transportista"
@@ -245,16 +240,6 @@ class Transportista(models.Model):
         return f'{self.nombre} {self.ape_pat} {self.ape_mat}'.strip() or self.user.username
 
     def save(self, *args, **kwargs):
-        # Generate a unique slug
-        if not self.slug:
-            base_slug = slugify(self.user.username)
-            unique_slug = base_slug
-            counter = 1
-            while Transportista.objects.filter(slug=unique_slug).exists():
-                unique_slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = unique_slug
-
         # Automatically set `licencia_mp` based on whether `licencia_conducir_mp_foto` is present
         if self.licencia_conducir_mp_foto:
             self.licencia_mp = True
@@ -283,6 +268,7 @@ class Transportista(models.Model):
         return Verificaciones.objects.filter(transportista=self).exists()
 
 class DatosFiscales(models.Model):
+    user = models.OneToOneField(MyUser, on_delete=models.CASCADE, primary_key=True)
     nombre = models.CharField(
         verbose_name="Nombre o Razon social(empresas)",
         max_length=100)
@@ -304,9 +290,8 @@ class DatosFiscales(models.Model):
         default=False,
         help_text="Las empresas son personas morales")
     verificador_foto = models.ImageField(verbose_name="Foto de encierro de verificador", upload_to='verificaciones', blank=True)
-    verificador_direccion = models.CharField(verbose_name="Dirección del domicilio fiscal", max_length=200, blank=True)
     es_verificado = models.BooleanField(default=False)
-    user = models.OneToOneField(MyUser, on_delete=models.CASCADE, primary_key=True)
+    direccion_google = models.CharField(max_length=200, blank=True, null=True)
 
     class Meta:
         verbose_name = "Datos fiscales"
