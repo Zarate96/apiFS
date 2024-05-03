@@ -239,3 +239,4 @@ class DatosFiscalesAPIView(APIView):
         finally:
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
+
