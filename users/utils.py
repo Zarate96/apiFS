@@ -1,3 +1,4 @@
+import googlemaps
 from django.utils.encoding import force_str
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -7,10 +8,10 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.conf import settings
 from constants import constants
-from .models import MyUser
-from rest_framework import status
-from rest_framework.response import Response
+from rest_framework import serializers
 from .schemas.responses import custom_response
+
+gmaps = googlemaps.Client(key=settings.GOOGLE_API_KEY)
 
 
 class TokenGenerator(PasswordResetTokenGenerator):
@@ -20,6 +21,7 @@ class TokenGenerator(PasswordResetTokenGenerator):
 
     def _make_hash_value(self, user, timestamp):
         return f"{user.pk}{timestamp}{user.is_active}"
+
 
 def send_activation_email(user, request):
     """
@@ -48,9 +50,20 @@ def send_activation_email(user, request):
                     html_message=email_body,
                 )
             except Exception as e:
-                print(e)
                 raise e
     except Exception as e:
-        print("send_activation_email error")
-        print(e)
         raise e
+
+
+def validate_address(address) -> str:
+    """
+    Validate the given address using Google Maps API.
+    """
+    geocode_result = gmaps.geocode(address)
+    try:
+        direccion_google = geocode_result[0]["formatted_address"]
+        if len(geocode_result) == 0 or len(direccion_google) < 50:
+            raise serializers.ValidationError(f"The address {address} is not valid")
+        return direccion_google
+    except Exception as e:
+        raise serializers.ValidationError(str(e))
