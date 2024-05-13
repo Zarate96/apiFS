@@ -7,7 +7,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.conf import settings
-from constants import constants
+from shared.constants import constants
 from rest_framework import serializers
 from .schemas.responses import custom_response
 
@@ -31,7 +31,7 @@ def send_activation_email(user, request):
         current_site = get_current_site(request)
         email_subject = "Activa tu cuenta en Flete Seguro"
         email_body = render_to_string(
-            "users/mails/active.html",
+            "accounts/mails/active.html",
             {
                 "user": user,
                 "domain": current_site.domain,
