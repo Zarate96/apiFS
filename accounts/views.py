@@ -8,7 +8,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import MyUser
 from .utils import send_activation_email
 from .schemas.responses import custom_response
-from .serializers import MyUserSerializer, UserLoginSerializer, SendPasswordResetEmailSerializer
+from .serializers import (
+    MyUserSerializer,
+    UserLoginSerializer,
+    SendPasswordResetEmailSerializer,
+    UserPasswordResetSerializer,
+)
 
 from shared.constants import constants
 
@@ -41,7 +46,6 @@ class UserAPIView(APIView):
                 data = serializer.data
                 try:
                     send_activation_email(user, self.request)
-                    print("send_activation_email")
                 except Exception as e:
                     message = constants.MESSAGE_ERROR
                     return Response(
@@ -75,7 +79,7 @@ class ActivateUserApiView(APIView):
         """
         try:
             uid = force_str(urlsafe_base64_decode(uidb64))
-            user = MyUser.objects.get(pk=uid)
+            user = MyUser.objects.get(id=uid)
         except Exception as e:
             return Response(
                 custom_response({}, status.HTTP_500_INTERNAL_SERVER_ERROR, e),
@@ -123,10 +127,46 @@ class UserLoginView(APIView):
 
 
 class SendPasswordResetEmailView(APIView):
-    def post(self, request, format=None):
-        serializer = SendPasswordResetEmailSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        return Response(
-            {"msg": "Password Reset link send. Please check your Email"},
-            status=status.HTTP_200_OK,
-        )
+    """
+    API view for sending password reset email.
+    """
+
+    def post(self, request):
+        status_response = status.HTTP_200_OK
+        message = constants.MESSAGE_OK
+        try:
+            serializer = SendPasswordResetEmailSerializer(
+                data=request.data, context={"request": request}
+            )
+            serializer.is_valid(raise_exception=True)
+            data = {
+                "msg": "Password reset email sent successfully. Please check your email."
+            }
+        except Exception as e:
+            status_response = status.HTTP_404_NOT_FOUND
+            message = constants.MESSAGE_NOT_FOUND
+            data = str(e)
+        response_data = custom_response(data, status=status_response, message=message)
+        return Response(response_data, status=status_response)
+
+
+class UserPasswordResetView(APIView):
+    """
+    API view for user password reset.
+    """
+
+    def post(self, request, uidb64=None, token=None) -> Response:
+        status_response = status.HTTP_200_OK
+        message = constants.MESSAGE_OK
+        try:
+            serializer = UserPasswordResetSerializer(
+                data=request.data, context={"uid": uidb64, "token": token}
+            )
+            serializer.is_valid(raise_exception=True)
+            data = {"msg": "User change password successfully"}
+        except Exception as e:
+            status_response = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(e)
+        response_data = custom_response(data, status=status_response, message=message)
+        return Response(response_data, status=status_response)
