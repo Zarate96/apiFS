@@ -1,21 +1,30 @@
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
+
 from rest_framework import status
+from rest_framework import serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
 
 from .models import MyUser
 from .utils import send_activation_email
-from .schemas.responses import custom_response
 from .serializers import (
     MyUserSerializer,
     UserLoginSerializer,
     SendPasswordResetEmailSerializer,
     UserPasswordResetSerializer,
+    DatosFiscalesSerializer,
 )
 
 from shared.constants import constants
+from shared.permissions import IsOwner
+from shared.schemas.responses import custom_response
 
 
 def get_tokens_for_user(user):
@@ -170,3 +179,66 @@ class UserPasswordResetView(APIView):
             data = str(e)
         response_data = custom_response(data, status=status_response, message=message)
         return Response(response_data, status=status_response)
+
+
+class DatosFiscalesAPIView(APIView):
+    """
+    API view for fiscal data.
+    """
+
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get(self, request, slug=None) -> Response:
+        """
+        Handle GET requests for fiscal data.
+        """
+        status_code = status.HTTP_200_OK
+        message = constants.MESSAGE_OK
+        data = {}
+        try:
+            user = get_object_or_404(MyUser, slug=slug)
+            serializer = DatosFiscalesSerializer(user.datosfiscales)
+            data = serializer.data
+        except Exception as e:
+            print(e)
+            status_code = status.HTTP_404_NOT_FOUND
+            message = constants.MESSAGE_NOT_FOUND
+        finally:
+            response_data = custom_response(data, status_code, message)
+            return Response(response_data, status=status_code)
+
+    def patch(self, request, slug=None) -> Response:
+        """
+        Handle PATCH requests for fiscal data.
+        """
+        try:
+            user = get_object_or_404(MyUser, slug=slug)
+            serializer = DatosFiscalesSerializer(
+                user.datosfiscales, data=request.data, partial=True
+            )
+            serializer.is_valid(
+                raise_exception=True
+            )  # Raise ValidationError if not valid
+            serializer.save()
+            data = serializer.data
+            status_code = status.HTTP_200_OK
+            message = constants.MESSAGE_UPDATED
+        except serializers.ValidationError as ve:
+            status_code = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(ve)
+        except ValidationError as ve:
+            status_code = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(ve)
+        except Http404:
+            status_code = status.HTTP_404_NOT_FOUND
+            message = constants.MESSAGE_NOT_FOUND
+            data = constants.MESSAGE_NOT_FOUND
+        except Exception as e:
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            message = constants.MESSAGE_ERROR
+            data = str(e)
+        finally:
+            response_data = custom_response(data, status_code, message)
+            return Response(response_data, status=status_code)

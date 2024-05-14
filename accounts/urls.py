@@ -5,7 +5,8 @@ from .views import (
     ActivateUserApiView,
     UserLoginView,
     SendPasswordResetEmailView,
-    UserPasswordResetView
+    UserPasswordResetView,
+    DatosFiscalesAPIView
 )
 
 urlpatterns = [
@@ -20,4 +21,5 @@ urlpatterns = [
         "email-cambio-password/", SendPasswordResetEmailView.as_view(), name="email-reset-password"
     ),
     path('cambio-password/<uidb64>/<token>/', UserPasswordResetView.as_view(), name='reset-password'),
+    path('datos-fiscales/<slug>', DatosFiscalesAPIView.as_view(), name='datos-fiscales')
 ]
