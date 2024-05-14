@@ -41,7 +41,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Local apps
-    "users",
+    "accounts",
+    "clientes",
+    "transportistas",
     # Third party apps
     "rest_framework",
     "rest_framework_simplejwt",
@@ -122,7 +124,7 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
-AUTH_USER_MODEL = "users.MyUser"
+AUTH_USER_MODEL = "accounts.MyUser"
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
