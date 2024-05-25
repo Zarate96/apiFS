@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, serializers
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -10,7 +11,7 @@ from django.core.exceptions import ValidationError
 from accounts.models import MyUser
 from .serializers import ClienteSerializer
 
-from shared.permissions import IsOwner
+from shared.permissions import IsOwner, IsCliente
 from shared.schemas.responses import custom_response
 from shared.constants import constants
 
@@ -19,9 +20,9 @@ class ClienteAPIView(APIView):
     API view for client.
     """
 
-    permission_classes = [IsAuthenticated, IsOwner]
+    permission_classes = [IsAuthenticated, IsOwner, IsCliente]
 
-    def get(self, request, slug=None) -> Response:
+    def get(self, request) -> Response:
         """
         Handle GET requests for client.
         """
@@ -29,25 +30,31 @@ class ClienteAPIView(APIView):
         message = constants.MESSAGE_OK
         data = {}
         try:
-            user = get_object_or_404(MyUser, slug=slug)
-            serializer = ClienteSerializer(user.cliente)
+            user = request.user
+            self.check_object_permissions(request, user)
+            serializer = ClienteSerializer(user.clientes)
             data = serializer.data
+        except PermissionDenied as e:
+            data = str(e)
+            status_code = status.HTTP_403_FORBIDDEN
+            message = constants.MESSAGE_FORBIDDEN
         except Exception as e:
             data = str(e)
-            status_code = status.HTTP_404_NOT_FOUND
-            message = constants.MESSAGE_NOT_FOUND
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            message = constants.MESSAGE_ERROR
         finally:
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
 
-    def patch(self, request, slug=None) -> Response:
+    def patch(self, request) -> Response:
         """
         Handle PATCH requests for client.
         """
         try:
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
+            self.check_object_permissions(request, user)
             serializer = ClienteSerializer(
-                user.cliente, data=request.data, partial=True
+                user.clientes, data=request.data, partial=True
             )
             serializer.is_valid(
                 raise_exception=True
@@ -64,6 +71,10 @@ class ClienteAPIView(APIView):
             status_code = status.HTTP_400_BAD_REQUEST
             message = constants.MESSAGE_BAD_REQUEST
             data = str(ve)
+        except PermissionDenied as e:
+            data = str(e)
+            status_code = status.HTTP_403_FORBIDDEN
+            message = constants.MESSAGE_FORBIDDEN
         except Http404:
             status_code = status.HTTP_404_NOT_FOUND
             message = constants.MESSAGE_NOT_FOUND
