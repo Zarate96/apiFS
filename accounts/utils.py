@@ -11,7 +11,7 @@ from shared.constants import constants
 
 class EmailHandler:
     '''
-    Class to handle email sending.
+    Class to handle email sending v.
     '''
     @staticmethod
     def send_email(user, request, subject_template, body_template):
