@@ -1,0 +1,68 @@
+# .github/workflows/test.yml
+name: Run Tests
+
+on:
+  push:
+    branches: [ "develop" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'  # Specify your Python version
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+          SECRET_KEY_PRODUCTION: ${{ secrets.SECRET_KEY_PRODUCTION }}
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_FROM_USER: ${{ secrets.EMAIL_FROM_USER }}
+          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+          EMAIL_USE_SSL: ${{ secrets.EMAIL_USE_SSL }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          source venv/bin/activate
+          python manage.py migrate
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+          SECRET_KEY_PRODUCTION: ${{ secrets.SECRET_KEY_PRODUCTION }}
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_FROM_USER: ${{ secrets.EMAIL_FROM_USER }}
+          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+          EMAIL_USE_SSL: ${{ secrets.EMAIL_USE_SSL }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          source venv/bin/activate
+          python manage.py test
