@@ -1,10 +1,10 @@
 from rest_framework import serializers
 from .utils import validate_address
-from .models import Cliente
+from .models import Clientes
 
 class ClienteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Cliente
+        model = Clientes
         exclude = [
             "user",
         ]

@@ -6,12 +6,12 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from rest_framework import serializers
 
-from .models import MyUser, DatosFiscales
+from .models import MyUser, DatosFiscales, Contactos
 from .utils import send_reset_email
 
-from clientes.models import Cliente
+from clientes.models import Clientes
 from clientes.utils import validate_address
-from transportistas.models import Transportista
+from transportistas.models import Transportistas
 
 
 class MyUserSerializer(serializers.ModelSerializer):
@@ -67,9 +67,9 @@ class MyUserSerializer(serializers.ModelSerializer):
 
         # Create corresponding objects based on user type
         if client:
-            Cliente.objects.create(user=user)
+            Clientes.objects.create(user=user)
         elif transportista:
-            Transportista.objects.create(user=user)
+            Transportistas.objects.create(user=user)
 
         # Create DatosFiscales instance
         DatosFiscales.objects.create(user=user, es_empresa=moral)
@@ -153,7 +153,7 @@ class UserPasswordResetSerializer(serializers.Serializer):
 class DatosFiscalesSerializer(serializers.ModelSerializer):
     class Meta:
         model = DatosFiscales
-        exclude = ["direccion_google","es_empresa","user","verificador_foto","es_verificado"]
+        exclude = ["direccion_google","es_empresa","user","creado_at","modificado_at"]
 
     def update(self, instance, validated_data):
         address_components = {
@@ -164,13 +164,11 @@ class DatosFiscalesSerializer(serializers.ModelSerializer):
             "state": validated_data.get("estado"),
             "postal_code": validated_data.get("cp"),
         }
-        # Construct the full address string
         address_str = ", ".join(
             value for key, value in address_components.items() if value is not None
         )
         try:
             validated_address = validate_address(address_str)
-            # Update the instance with validated data and save validated address to direccion_google field
             instance.direccion_google = validated_address
             instance.save()
             instance = super().update(instance, validated_data)
@@ -178,3 +176,9 @@ class DatosFiscalesSerializer(serializers.ModelSerializer):
             raise ve
 
         return instance
+
+
+class ContactoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contactos
+        exclude = ["user"]

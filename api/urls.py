@@ -19,10 +19,15 @@ from django.contrib import admin
 from django.urls import path, include
 from accounts.urls import urlpatterns as user_urls
 from clientes.urls import urlpatterns as cliente_urls
-from django.conf import settings
+from transportistas.urls import urlpatterns as transportista_urls
+
+from shared.constants import constants
+
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path(f"api/{settings.API_VERSION}/", include(user_urls)),
-    path(f"api/{settings.API_VERSION}/", include(cliente_urls)),
+    path(f"{constants.API_BASE_PATH}", include(user_urls)),
+    path(f"{constants.API_BASE_PATH}", include(cliente_urls)),
+    path(f"{constants.API_BASE_PATH}", include(transportista_urls)),
 ]
