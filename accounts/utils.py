@@ -10,6 +10,9 @@ from shared.constants import constants
 
 
 class EmailHandler:
+    '''
+    Class to handle email sending.
+    '''
     @staticmethod
     def send_email(user, request, subject_template, body_template):
         try:
