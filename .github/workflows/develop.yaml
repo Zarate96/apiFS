@@ -47,6 +47,7 @@ jobs:
           EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
           EMAIL_FROM_USER: ${{ secrets.EMAIL_FROM_USER }}
           EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+          EMAIL_USE_SSL: ${{ secrets.EMAIL_USE_SSL }}
         run: |
           source venv/bin/activate
           python manage.py migrate
@@ -59,6 +60,7 @@ jobs:
           EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
           EMAIL_FROM_USER: ${{ secrets.EMAIL_FROM_USER }}
           EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+          EMAIL_USE_SSL: ${{ secrets.EMAIL_USE_SSL }}
         run: |
           source venv/bin/activate
           python manage.py test
