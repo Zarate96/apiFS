@@ -1,21 +1,35 @@
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
-from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import MyUser
+from rest_framework import serializers
+from rest_framework.views import APIView
+from rest_framework import status, generics
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import PermissionDenied
+
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
+
+from django_filters import rest_framework as filters
+
+from .models import MyUser, Contactos
 from .utils import send_activation_email
-from .schemas.responses import custom_response
 from .serializers import (
     MyUserSerializer,
     UserLoginSerializer,
     SendPasswordResetEmailSerializer,
     UserPasswordResetSerializer,
+    DatosFiscalesSerializer,
+    ContactoSerializer,
 )
+from .filters import ContactoFilter
 
 from shared.constants import constants
+from shared.permissions import IsOwner
+from shared.schemas.responses import custom_response
 
 
 def get_tokens_for_user(user):
@@ -170,3 +184,225 @@ class UserPasswordResetView(APIView):
             data = str(e)
         response_data = custom_response(data, status=status_response, message=message)
         return Response(response_data, status=status_response)
+
+
+class DatosFiscalesAPIView(APIView):
+    """
+    API view for fiscal data.
+    """
+
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get(self, request) -> Response:
+        """
+        Handle GET requests for fiscal data.
+        """
+        status_code = status.HTTP_200_OK
+        message = constants.MESSAGE_OK
+        data = {}
+        try:
+            user = request.user
+            self.check_object_permissions(request, user)
+            serializer = DatosFiscalesSerializer(user.datosfiscales)
+            data = serializer.data
+        except PermissionDenied as e:
+            status_code = status.HTTP_403_FORBIDDEN
+            message = constants.MESSAGE_FORBIDDEN
+            data = str(e)
+        except serializers.ValidationError as ve:
+            status_code = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(ve)
+        except Exception as e:
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            message = constants.MESSAGE_ERROR
+            data = str(e)
+        finally:
+            response_data = custom_response(data, status_code, message)
+            return Response(response_data, status=status_code)
+
+    def patch(self, request) -> Response:
+        """
+        Handle PATCH requests for fiscal data.
+        """
+        try:
+            user = request.user
+            self.check_object_permissions(request, user)
+            serializer = DatosFiscalesSerializer(
+                user.datosfiscales, data=request.data, partial=True
+            )
+            serializer.is_valid(
+                raise_exception=True
+            )  
+            serializer.save()
+            data = serializer.data
+            status_code = status.HTTP_200_OK
+            message = constants.MESSAGE_UPDATED
+        except serializers.ValidationError as ve:
+            status_code = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(ve)
+        except ValidationError as ve:
+            status_code = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(ve)
+        except PermissionDenied as e:
+            data = str(e)
+            status_code = status.HTTP_403_FORBIDDEN
+            message = constants.MESSAGE_FORBIDDEN
+        except Http404:
+            status_code = status.HTTP_404_NOT_FOUND
+            message = constants.MESSAGE_NOT_FOUND
+            data = constants.MESSAGE_NOT_FOUND
+        except Exception as e:
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            message = constants.MESSAGE_ERROR
+            data = str(e)
+        finally:
+            response_data = custom_response(data, status_code, message)
+            return Response(response_data, status=status_code)
+
+
+class ContactoListAPIView(generics.ListCreateAPIView):
+    """
+    API view for user contact list.
+    """
+
+    permission_classes = [IsAuthenticated, IsOwner]
+    serializer_class = ContactoSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = ContactoFilter
+
+    def get_queryset(self):
+        """
+        Get the queryset for the user contact list.
+        """
+        return self.request.user.contactos_set.all()
+
+    def list(self, request, *args, **kwargs):
+        response_data = {}
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            serializer = self.get_serializer(queryset, many=True)
+            response_data = custom_response(
+                serializer.data, status.HTTP_200_OK, constants.MESSAGE_OK
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+        except PermissionDenied as e:
+            response_data = custom_response(
+                str(e), status.HTTP_403_FORBIDDEN, constants.MESSAGE_FORBIDDEN
+            )
+            return Response(response_data, status=status.HTTP_403_FORBIDDEN)
+        except Exception as e:
+            response_data = custom_response(
+                str(e), status.HTTP_500_INTERNAL_SERVER_ERROR, constants.MESSAGE_ERROR
+            )
+            return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ContactoAPIView(APIView):
+    """
+    API view for user contact.
+    """
+
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get(self, request, pk=int) -> Response:
+        """
+        Handle GET requests for user contact.
+        """
+        status_code = status.HTTP_200_OK
+        message = constants.MESSAGE_OK
+        data = {}
+        try:
+            contacto = get_object_or_404(Contactos, id=pk)
+            self.check_object_permissions(request, contacto.user)
+            serializer = ContactoSerializer(contacto)
+            data = serializer.data
+        except PermissionDenied as e:
+            data = str(e)
+            status_code = status.HTTP_403_FORBIDDEN
+            message = constants.MESSAGE_FORBIDDEN
+        except Exception as e:
+            status_code = status.HTTP_404_NOT_FOUND
+            message = constants.MESSAGE_NOT_FOUND
+        finally:
+            response_data = custom_response(data, status_code, message)
+            return Response(response_data, status=status_code)
+
+    def patch(self, request, pk=int) -> Response:
+        """
+        Handle PATCH requests for user contact.
+        """
+        try:
+            user = request.user
+            contacto = get_object_or_404(Contactos, id=pk)
+            self.check_object_permissions(request, contacto.user)
+            serializer = ContactoSerializer(contacto, data=request.data, partial=True)
+            serializer.is_valid(
+                raise_exception=True
+            )  # Raise ValidationError if not valid
+            serializer.save()
+            data = serializer.data
+            status_code = status.HTTP_200_OK
+            message = constants.MESSAGE_UPDATED
+        except serializers.ValidationError as ve:
+            status_code = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(ve)
+        except ValidationError as ve:
+            status_code = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(ve)
+        except PermissionDenied as e:
+            data = str(e)
+            status_code = status.HTTP_403_FORBIDDEN
+            message = constants.MESSAGE_FORBIDDEN
+        except Http404:
+            status_code = status.HTTP_404_NOT_FOUND
+            message = constants.MESSAGE_NOT_FOUND
+            data = constants.MESSAGE_NOT_FOUND
+        except Exception as e:
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            message = constants.MESSAGE_ERROR
+            data = str(e)
+        finally:
+            response_data = custom_response(data, status_code, message)
+            return Response(response_data, status=status_code)
+
+    def post(self, request) -> Response:
+        """
+        Handle POST requests for user contact.
+        """
+        try:
+            user = request.user
+            self.check_object_permissions(request, user)
+            serializer = ContactoSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(user=user)
+            data = serializer.data
+            status_code = status.HTTP_201_CREATED
+            message = constants.MESSAGE_CREATED
+        except serializers.ValidationError as ve:
+            status_code = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(ve)
+        except ValidationError as ve:
+            status_code = status.HTTP_400_BAD_REQUEST
+            message = constants.MESSAGE_BAD_REQUEST
+            data = str(ve)
+        except PermissionDenied as e:
+            data = str(e)
+            status_code = status.HTTP_403_FORBIDDEN
+            message = constants.MESSAGE_FORBIDDEN
+        except Http404:
+            status_code = status.HTTP_404_NOT_FOUND
+            message = constants.MESSAGE_NOT_FOUND
+            data = constants.MESSAGE_NOT_FOUND
+        except Exception as e:
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            message = constants.MESSAGE_ERROR
+            data = str(e)
+        finally:
+            response_data = custom_response(data, status_code, message)
+            return Response(response_data, status=status_code)

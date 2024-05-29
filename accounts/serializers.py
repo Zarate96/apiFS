@@ -6,11 +6,12 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from rest_framework import serializers
 
-from .models import MyUser, DatosFiscales
+from .models import MyUser, DatosFiscales, Contactos
 from .utils import send_reset_email
 
-from clientes.models import Cliente
-from transportistas.models import Transportista
+from clientes.models import Clientes
+from clientes.utils import validate_address
+from transportistas.models import Transportistas
 
 
 class MyUserSerializer(serializers.ModelSerializer):
@@ -66,9 +67,9 @@ class MyUserSerializer(serializers.ModelSerializer):
 
         # Create corresponding objects based on user type
         if client:
-            Cliente.objects.create(user=user)
+            Clientes.objects.create(user=user)
         elif transportista:
-            Transportista.objects.create(user=user)
+            Transportistas.objects.create(user=user)
 
         # Create DatosFiscales instance
         DatosFiscales.objects.create(user=user, es_empresa=moral)
@@ -115,31 +116,69 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
             return attrs
         else:
             raise serializers.ValidationError("You are not a Registered User")
-        
 
 
 class UserPasswordResetSerializer(serializers.Serializer):
-    password = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
-    password2 = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
+    password = serializers.CharField(
+        max_length=255, style={"input_type": "password"}, write_only=True
+    )
+    password2 = serializers.CharField(
+        max_length=255, style={"input_type": "password"}, write_only=True
+    )
+
     class Meta:
-        fields = ['password', 'password2']
+        fields = ["password", "password2"]
 
     def validate(self, attrs):
         try:
-            password = attrs.get('password')
-            password2 = attrs.get('password2')
-            uid = self.context.get('uid')
-            token = self.context.get('token')
+            password = attrs.get("password")
+            password2 = attrs.get("password2")
+            uid = self.context.get("uid")
+            token = self.context.get("token")
             if password != password2:
-                raise serializers.ValidationError("Password and Confirm Password doesn't match")
+                raise serializers.ValidationError(
+                    "Password and Confirm Password doesn't match"
+                )
             id = smart_str(urlsafe_base64_decode(uid))
             user = MyUser.objects.get(id=id)
             if not PasswordResetTokenGenerator().check_token(user, token):
-                raise serializers.ValidationError('Token is not Valid or Expired')
+                raise serializers.ValidationError("Token is not Valid or Expired")
             user.set_password(password)
             user.save()
             return attrs
         except DjangoUnicodeDecodeError as identifier:
             PasswordResetTokenGenerator().check_token(user, token)
-            raise serializers.ValidationError('Token is not Valid or Expired')
-    
+            raise serializers.ValidationError("Token is not Valid or Expired")
+
+class DatosFiscalesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DatosFiscales
+        exclude = ["direccion_google","es_empresa","user","creado_at","modificado_at"]
+
+    def update(self, instance, validated_data):
+        address_components = {
+            "street": validated_data.get("calle"),
+            "number": validated_data.get("num_ext"),
+            "neighborhood": validated_data.get("colonia"),
+            "city": validated_data.get("municipio"),
+            "state": validated_data.get("estado"),
+            "postal_code": validated_data.get("cp"),
+        }
+        address_str = ", ".join(
+            value for key, value in address_components.items() if value is not None
+        )
+        try:
+            validated_address = validate_address(address_str)
+            instance.direccion_google = validated_address
+            instance.save()
+            instance = super().update(instance, validated_data)
+        except serializers.ValidationError as ve:
+            raise ve
+
+        return instance
+
+
+class ContactoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contactos
+        exclude = ["user"]

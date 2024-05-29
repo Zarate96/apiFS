@@ -1,3 +1,7 @@
+from typing import Final
+from django.conf import settings
+
+
 class Constants(object):
     MESSAGE_OK: str = "Data processed successfully"
     MESSAGE_CREATED: str = "Data created successfully"
@@ -10,7 +14,7 @@ class Constants(object):
     MESSAGE_FORBIDDEN: str = "Forbidden"
     MESSAGE_METHOD_NOT_ALLOWED: str = "Method not allowed"
     PROTOCOL: str = "http"
-    COUNTRIES = (
+    STATE_CHOICES = (
         ("Aguascalientes", "Aguascalientes"),
         ("Baja California", "Baja California"),
         ("Baja California Sur", "Baja California Sur"),
@@ -45,5 +49,14 @@ class Constants(object):
         ("Zacatecas", "Zacatecas"),
     )
 
+    TIPOS_LICENCIAS = (
+        ("Licencia conducir", "Licencia conducir"),
+        ("Licencia material peligroso", "Licencia material peligroso"),
+    )
+    
+    API_BASE_PATH: Final[str] = f"api/{settings.API_VERSION}/"
+    URL_CLIENTE: Final[str] = f"clientes"
+    URL_TRANSPORTISTA: Final[str] = f"transportistas"
+    URL_USUARIO: Final[str] = f"usuarios"
 
 constants = Constants()
