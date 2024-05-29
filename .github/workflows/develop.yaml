@@ -43,6 +43,10 @@ jobs:
         env:
           DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
           SECRET_KEY_PRODUCTION: ${{ secrets.SECRET_KEY_PRODUCTION }}
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_FROM_USER: ${{ secrets.EMAIL_FROM_USER }}
+          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
         run: |
           source venv/bin/activate
           python manage.py migrate
@@ -51,6 +55,10 @@ jobs:
         env:
           DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
           SECRET_KEY_PRODUCTION: ${{ secrets.SECRET_KEY_PRODUCTION }}
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_FROM_USER: ${{ secrets.EMAIL_FROM_USER }}
+          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
         run: |
           source venv/bin/activate
           python manage.py test
