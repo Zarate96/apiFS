@@ -40,13 +40,17 @@ jobs:
           pip install -r requirements.txt
 
       - name: Apply migrations
+        env:
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+          SECRET_KEY_PRODUCTION: ${{ secrets.SECRET_KEY_PRODUCTION }}
         run: |
           source venv/bin/activate
-          export DATABASE_URL=postgres://test_user:test_password@localhost:5432/test_db
           python manage.py migrate
 
       - name: Run tests
+        env:
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+          SECRET_KEY_PRODUCTION: ${{ secrets.SECRET_KEY_PRODUCTION }}
         run: |
           source venv/bin/activate
-          export DATABASE_URL=postgres://test_user:test_password@localhost:5432/test_db
           python manage.py test
