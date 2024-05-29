@@ -9,24 +9,16 @@ from .views import (
 )
 from shared.constants import constants
 
-# Licencias chnange order path in next clean database and reset migrations
-# AGREGAR DOS TRANSPORTISTAS Y PROBAR TODOS EL CRUD DE TRANSPORTISTASS
-# CHECK NEW URL FOR ALL
-# TEST ALL WITHOUT SLUG ONY FOR CURRENT USER
+# Validate all with final slash
 
 urlpatterns_licencias = [
     path(
-        f"{constants.URL_TRANSPORTISTA}/licencias/",
-        LicenciasTransportistasAPIView.as_view(),
-        name="licencias-transportistas-management",
-    ),
-    path(
-        f"{constants.URL_TRANSPORTISTA}/licencia-conducir/",
+        f"{constants.URL_TRANSPORTISTA}/licencias/conducir/",
         LicenciasTransportistasAPIView.as_view(),
         name="licencia-conducir-management",
     ),
     path(
-        f"{constants.URL_TRANSPORTISTA}/licencia-mp/",
+        f"{constants.URL_TRANSPORTISTA}/licencias/mp/",
         LicenciasTransportistasAPIView.as_view(),
         name="licencia-mp-management",
     ),
@@ -34,36 +26,36 @@ urlpatterns_licencias = [
 
 urlpatterns_unidades = [
     path(
-        f"{constants.URL_TRANSPORTISTA}/<str:slug>/unidades",
+        f"{constants.URL_TRANSPORTISTA}/unidades/list/",
         ListUnidadesAPIView.as_view(),
         name="unidades-list",
     ),
     path(
-        f"{constants.URL_TRANSPORTISTA}/<str:slug>/unidades/agregar",
-        UnidadesAPIView.as_view(),
-        name="unidades-management-add",
-    ),
-    path(
-        f"{constants.URL_TRANSPORTISTA}/<str:slug>/unidades/<str:placa>",
+        f"{constants.URL_TRANSPORTISTA}/unidades/",
         UnidadesAPIView.as_view(),
         name="unidades-management",
+    ),
+    path(
+        f"{constants.URL_TRANSPORTISTA}/unidades/<str:placa>/",
+        UnidadesAPIView.as_view(),
+        name="unidades-detail",
     ),    
 ]
 
 urlpatterns_encierros = [
     # Encierros
     path(
-        f"{constants.URL_TRANSPORTISTA}/<str:slug>/encierros",
+        f"{constants.URL_TRANSPORTISTA}/encierros/list/",
         ListEncierrosAPIView.as_view(),
         name="encierro-list",
     ),
     path(
-        f"{constants.URL_TRANSPORTISTA}/<str:slug>/encierros/agregar",
+        f"{constants.URL_TRANSPORTISTA}/encierros/<str:encierro_slug>/",
         EncierroAPIView.as_view(),
-        name="encierro-management-add",
+        name="encierro-detail",
     ),
     path(
-        f"{constants.URL_TRANSPORTISTA}/<str:slug>/encierros/<str:encierro_slug>",
+        f"{constants.URL_TRANSPORTISTA}/encierros/",
         EncierroAPIView.as_view(),
         name="encierro-management",
     ),
@@ -73,7 +65,7 @@ urlpatterns_encierros = [
 urlpatterns = (
     [
         path(
-            f"{constants.URL_TRANSPORTISTA}/<str:slug>",
+            f"{constants.URL_TRANSPORTISTA}/perfil",
             TransportistaAPIView.as_view(),
             name="transportista-management",
         ),

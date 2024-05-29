@@ -20,7 +20,7 @@ from .serializers import (
     EncierroSerializer,
     UnidadesSerializer,
 )
-from .filters import EncierroFilter
+from .filters import EncierroFilter, UnidadesFilter
 
 from shared.permissions import IsOwner, IsTransportista
 from shared.schemas.responses import custom_response
@@ -32,9 +32,9 @@ class TransportistaAPIView(APIView):
     API view for transportista.
     """
 
-    permission_classes = [IsAuthenticated, IsOwner]
+    permission_classes = [IsAuthenticated, IsOwner, IsTransportista]
 
-    def get(self, request, slug=None) -> Response:
+    def get(self, request) -> Response:
         """
         Handle GET requests for transportista.
         """
@@ -42,9 +42,9 @@ class TransportistaAPIView(APIView):
         message = constants.MESSAGE_OK
         data = {}
         try:
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
             self.check_object_permissions(request, user)
-            serializer = TransportistaSerializer(user.transportista)
+            serializer = TransportistaSerializer(user.transportistas)
             data = serializer.data
         except PermissionDenied as e:
             data = str(e)
@@ -58,15 +58,15 @@ class TransportistaAPIView(APIView):
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
 
-    def patch(self, request, slug=None) -> Response:
+    def patch(self, request) -> Response:
         """
         Handle PATCH requests for transportista.
         """
         try:
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
             self.check_object_permissions(request, user)
             serializer = TransportistaSerializer(
-                user.transportista, data=request.data, partial=True
+                user.transportistas, data=request.data, partial=True
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -105,7 +105,7 @@ class LicenciasTransportistasAPIView(APIView):
 
     permission_classes = [IsAuthenticated, IsOwner, IsTransportista]
 
-    def get(self, request, slug=None) -> Response:
+    def get(self, request) -> Response:
         """
         Handle GET requests for LicenciasTransportistas.
         """
@@ -113,21 +113,21 @@ class LicenciasTransportistasAPIView(APIView):
         message = constants.MESSAGE_OK
         data = {}
         try:
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
             self.check_object_permissions(request, user)
             if (
-                user.transportista.has_licencia_conducir
-                and "licencia-conducir" in request.path
+                user.transportistas.has_licencia_conducir
+                and "conducir" in request.path
             ):
                 serializer = LicenciasTransportistasSerializer(
                     LicenciasTransportistas.objects.get(
-                        user=user.transportista, tipo_licencia="Licencia conducir"
+                        user=user.transportistas, tipo_licencia="Licencia conducir"
                     )
                 )
-            elif user.transportista.has_licencia_mp and "licencia-mp" in request.path:
+            elif user.transportistas.has_licencia_mp and "mp" in request.path:
                 serializer = LicenciasTransportistasSerializer(
                     LicenciasTransportistas.objects.get(
-                        user=user.transportista,
+                        user=user.transportistas,
                         tipo_licencia="Licencia material peligroso",
                     )
                 )
@@ -187,34 +187,32 @@ class LicenciasTransportistasAPIView(APIView):
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
 
-    def post(self, request, slug=None) -> Response:
+    def post(self, request) -> Response:
         """
         Handle POST requests to create LicenciasTransportistas.
         """
         try:
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
             self.check_object_permissions(request, user)
-
             serializer = LicenciasTransportistasSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-
             tipo_licencia = request.data.get("tipo_licencia")
             if (
                 tipo_licencia == "Licencia conducir"
-                and user.transportista.has_licencia_conducir
+                and user.transportistas.has_licencia_conducir
             ):
                 raise ValidationError(
                     "El transportista ya tiene una licencia de conducir"
                 )
             if (
                 tipo_licencia == "Licencia material peligroso"
-                and user.transportista.has_licencia_mp
+                and user.transportistas.has_licencia_mp
             ):
                 raise ValidationError(
                     "El transportista ya tiene una licencia de material peligroso"
                 )
 
-            serializer.save(user=user.transportista)
+            serializer.save(user=user.transportistas)
             data = serializer.data
             status_code = status.HTTP_201_CREATED
             message = constants.MESSAGE_CREATED
@@ -326,12 +324,11 @@ class ListEncierrosAPIView(generics.ListAPIView):
     filterset_class = EncierroFilter
 
     def get_queryset(self):
-        user_slug = self.kwargs.get("slug")
-        user = get_object_or_404(MyUser, slug=user_slug)
+        user = self.request.user
         self.check_object_permissions(self.request, user)
-        if not user.transportista.has_encierro:
+        if not user.transportistas.has_encierros:
             raise PermissionDenied("El transportista no cuenta con encierros")
-        return Encierros.objects.filter(user=user.transportista)
+        return Encierros.objects.filter(user=user.transportistas)
 
     def list(self, request, *args, **kwargs):
         response_data = {}
@@ -361,7 +358,7 @@ class EncierroAPIView(APIView):
 
     permission_classes = [IsAuthenticated, IsOwner, IsTransportista]
     
-    def get(self, request, slug=None, encierro_slug=None) -> Response:
+    def get(self, request, encierro_slug=None) -> Response:
         """
         Handle GET requests for Encierro.
         """
@@ -369,9 +366,11 @@ class EncierroAPIView(APIView):
         message = constants.MESSAGE_OK
         data = {}
         try:
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
             self.check_object_permissions(request, user)
             encierro = get_object_or_404(Encierros, slug=encierro_slug)
+            if encierro.user != user.transportistas:
+                raise PermissionDenied("El encierro no pertenece a este transportista")
             serializer = EncierroSerializer(encierro)
             data = serializer.data
         except PermissionDenied as e:
@@ -395,12 +394,13 @@ class EncierroAPIView(APIView):
         Handle POST requests to create Encierro.
         """
         try:
-            print("entra")
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
             self.check_object_permissions(request, user)
+            if not user.transportistas.es_verificado:
+                raise PermissionDenied("El transportista no está verificado")
             serializer = EncierroSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            serializer.save(user=user.transportista)
+            serializer.save(user=user.transportistas)
             data = serializer.data
             status_code = status.HTTP_201_CREATED
             message = constants.MESSAGE_CREATED
@@ -432,14 +432,16 @@ class EncierroAPIView(APIView):
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
 
-    def patch(self, request, slug=None, encierro_slug=None) -> Response:
+    def patch(self, request, encierro_slug=None) -> Response:
         """
         Handle PATCH requests for Encierro.
         """
         try:
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
             self.check_object_permissions(request, user)
             encierro = get_object_or_404(Encierros, slug=encierro_slug)
+            if encierro.user != user.transportistas:
+                raise PermissionDenied("El encierro no pertenece a este transportista")
             serializer = EncierroSerializer(encierro, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -482,14 +484,15 @@ class ListUnidadesAPIView(generics.ListAPIView):
 
     serializer_class = UnidadesSerializer
     permission_classes = [IsAuthenticated, IsOwner, IsTransportista]
-
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = UnidadesFilter
+    
     def get_queryset(self):
-        user_slug = self.kwargs.get("slug")
-        user = get_object_or_404(MyUser, slug=user_slug)
+        user = self.request.user
         self.check_object_permissions(self.request, user)
-        if not user.transportista.has_unidades:
+        if not user.transportistas.has_unidades:
             raise PermissionDenied("El transportista no cuenta con unidades")
-        return Unidades.objects.filter(user=user.transportista)
+        return Unidades.objects.filter(user=user.transportistas)
 
     def list(self, request, *args, **kwargs):
         response_data = {}
@@ -519,7 +522,7 @@ class UnidadesAPIView(APIView):
 
     permission_classes = [IsAuthenticated, IsOwner, IsTransportista]
 
-    def get(self, request, placa=None, slug=None) -> Response:
+    def get(self, request, placa=None) -> Response:
         """
         Handle GET requests for Unidades.
         """
@@ -527,9 +530,11 @@ class UnidadesAPIView(APIView):
         message = constants.MESSAGE_OK
         data = {}
         try:
-            user = get_object_or_404(MyUser, slug=slug)
-            unidad = get_object_or_404(Unidades, placa=placa)
+            user = request.user
             self.check_object_permissions(request, user)
+            unidad = get_object_or_404(Unidades, placa=placa)
+            if unidad.user != user.transportistas:
+                raise PermissionDenied("La unidad no pertenece a este transportista")
             serializer = UnidadesSerializer(unidad)
             data = serializer.data
         except PermissionDenied as e:
@@ -544,14 +549,16 @@ class UnidadesAPIView(APIView):
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
 
-    def patch(self, request, slug=None, placa=None) -> Response:
+    def patch(self, request, placa=None) -> Response:
         """
         Handle PATCH requests for Unidades.
         """
         try:
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
             self.check_object_permissions(request, user)
             unidad = get_object_or_404(Unidades, placa=placa)
+            if unidad.user != user.transportistas:
+                raise PermissionDenied("La unidad no pertenece a este transportista")
             serializer = UnidadesSerializer(
                 unidad, data=request.data, partial=True
             )
@@ -584,16 +591,22 @@ class UnidadesAPIView(APIView):
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
     
-    def post(self, request, slug=None) -> Response:
+    def post(self, request) -> Response:
         '''
         Handle POST requests for Unidades.
         '''
         try:
-            user = get_object_or_404(MyUser, slug=slug)
+            user = request.user
             self.check_object_permissions(request, user)
+            encierro = request.data.get("encierro")
+            encierro = get_object_or_404(Encierros, id=encierro)
+            if encierro.user != user.transportistas:
+                raise PermissionDenied("El encierro no pertenece a este transportista")
+            if not encierro.es_verificado:
+                raise PermissionDenied("El encierro no está verificado")
             serializer = UnidadesSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            serializer.save(user=user.transportista)
+            serializer.save(user=user.transportistas)
             data = serializer.data
             status_code = status.HTTP_201_CREATED
             message = constants.MESSAGE_CREATED

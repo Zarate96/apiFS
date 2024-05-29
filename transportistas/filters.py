@@ -16,7 +16,7 @@ class EncierroFilter(filters.FilterSet):
         fields = ['nombre', 'calle', 'colonia', 'municipio', 'estado', 'cp', 'es_verificado', 'es_activo']
 
 
-class UniadesFilter(filters.FilterSet):
+class UnidadesFilter(filters.FilterSet):
     marca = filters.CharFilter(field_name='marca', lookup_expr='icontains')
     modelo = filters.CharFilter(field_name='modelo', lookup_expr='icontains')
     placa = filters.CharFilter(field_name='placa', lookup_expr='exact')

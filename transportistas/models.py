@@ -49,23 +49,23 @@ class Transportistas(models.Model):
 
     # Improved properties
     @property
-    def has_encierro(self):
-        return Encierros.objects.filter(user=self.user.transportista).exists()
+    def has_encierros(self):
+        return Encierros.objects.filter(user=self.user.transportistas).exists()
 
     @property
     def has_unidades(self):
-        return Unidades.objects.filter(user=self.user.transportista).exists()
+        return Unidades.objects.filter(user=self.user.transportistas).exists()
 
     @property
     def has_licencia_conducir(self):
         return LicenciasTransportistas.objects.filter(
-            user=self.user.transportista, tipo_licencia="Licencia conducir"
+            user=self.user.transportistas, tipo_licencia="Licencia conducir"
         ).exists()
 
     @property
     def has_licencia_mp(self):
         return LicenciasTransportistas.objects.filter(
-            user=self.user.transportista, tipo_licencia="Licencia material peligroso"
+            user=self.user.transportistas, tipo_licencia="Licencia material peligroso"
         ).exists()
 
     # @property
