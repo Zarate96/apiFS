@@ -150,10 +150,17 @@ class UserPasswordResetSerializer(serializers.Serializer):
             PasswordResetTokenGenerator().check_token(user, token)
             raise serializers.ValidationError("Token is not Valid or Expired")
 
+
 class DatosFiscalesSerializer(serializers.ModelSerializer):
     class Meta:
         model = DatosFiscales
-        exclude = ["direccion_google","es_empresa","user","creado_at","modificado_at"]
+        exclude = [
+            "direccion_google",
+            "es_empresa",
+            "user",
+            "creado_at",
+            "modificado_at",
+        ]
 
     def update(self, instance, validated_data):
         address_components = {
@@ -182,3 +189,18 @@ class ContactoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contactos
         exclude = ["user"]
+
+
+# NEW VERSION MANAGER USER
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        token["email"] = user.email
+        token["username"] = user.username
+
+        return token

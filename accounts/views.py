@@ -24,6 +24,7 @@ from .serializers import (
     UserPasswordResetSerializer,
     DatosFiscalesSerializer,
     ContactoSerializer,
+    MyTokenObtainPairSerializer
 )
 from .filters import ContactoFilter
 
@@ -450,3 +451,10 @@ class ContactoAPIView(APIView):
         finally:
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
+
+
+#NEW VERSION MANAGER USER
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer

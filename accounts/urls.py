@@ -13,6 +13,7 @@ from .views import (
     ContactoAPIView,
     ContactoListAPIView,
     UserProfileAPIView,
+    MyTokenObtainPairView
 )
 
 from shared.constants import constants
@@ -31,11 +32,14 @@ urlpatterns = [
         name="activate",
     ),
     path(f"{constants.URL_USUARIO}/login", UserLoginView.as_view(), name="login"),
-    path(f"{constants.URL_USUARIO}/refresh", TokenRefreshView.as_view()),
     path(f"{constants.URL_USUARIO}/perfil", UserProfileAPIView.as_view(), name="user-profile"),
     path(
         f"{constants.URL_USUARIO}/email-cambio-password/", SendPasswordResetEmailView.as_view(), name="email-reset-password"
     ),
     path(f"{constants.URL_USUARIO}/cambio-password/<uidb64>/<token>/", UserPasswordResetView.as_view(), name='reset-password'),
     path(f"{constants.URL_USUARIO}/datos-fiscales", DatosFiscalesAPIView.as_view(), name='datos-fiscales'),
+    
+    # NEW VERSION MANAGER USER
+    path(f"{constants.URL_USUARIO}/token", MyTokenObtainPairView.as_view()),
+    path(f"{constants.URL_USUARIO}/refresh", TokenRefreshView.as_view()),
 ] + urlpatterns_contacto
