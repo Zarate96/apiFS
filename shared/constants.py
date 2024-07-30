@@ -14,6 +14,7 @@ class Constants(object):
     MESSAGE_FORBIDDEN: str = "Forbidden"
     MESSAGE_METHOD_NOT_ALLOWED: str = "Method not allowed"
     PROTOCOL: str = "http"
+    FRONTED_URL: str = "localhost:5173"
     STATE_CHOICES = (
         ("Aguascalientes", "Aguascalientes"),
         ("Baja California", "Baja California"),

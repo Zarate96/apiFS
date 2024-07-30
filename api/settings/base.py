@@ -47,12 +47,14 @@ INSTALLED_APPS = [
     # Third party apps
     "rest_framework",
     "rest_framework_simplejwt",
+    'corsheaders',
     'storages',
     'django_filters',
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -180,3 +182,5 @@ STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
 # MAPS GOOGLE CONFIG
 GOOGLE_API_KEY = config("GOOGLE_API_KEY", default="")
+
+CORS_ALLOW_ALL_ORIGINS = True

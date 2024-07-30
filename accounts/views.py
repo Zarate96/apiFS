@@ -36,11 +36,12 @@ def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
 
     return {
-        "refresh": str(refresh),
         "access": str(refresh.access_token),
+        "refresh": str(refresh),
     }
 
 
+from django.http import HttpResponse
 class UserAPIView(APIView):
     """
     API view for user registration.
@@ -50,6 +51,9 @@ class UserAPIView(APIView):
         """
         Handle POST requests for user registration.
         """
+        response = HttpResponse()
+        response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         try:
             serializer = MyUserSerializer(data=request.data)
 
@@ -74,12 +78,50 @@ class UserAPIView(APIView):
                 data = serializer.errors
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
-        except Exception as e:
+        except serializers.ValidationError as ve:
+            error_message = " ".join([str(detail) for detail in ve.detail])
             message = constants.MESSAGE_ERROR
-            return Response(
-                custom_response({}, status.HTTP_500_INTERNAL_SERVER_ERROR, message),
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            status_code = status.HTTP_400_BAD_REQUEST
+        except Exception as e:
+            print(e)
+            error_message = str(e)
+            message = constants.MESSAGE_ERROR
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return Response(
+            custom_response(error_message, status_code, message),
+            status=status_code,
+        )
+
+class UserProfileAPIView(APIView):
+    """
+    API view for client.
+    """
+
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get(self, request) -> Response:
+        """
+        Handle GET requests for client.
+        """
+        status_code = status.HTTP_200_OK
+        message = constants.MESSAGE_OK
+        data = {}
+        try:
+            user = request.user
+            self.check_object_permissions(request, user)
+            serializer = MyUserSerializer(user)
+            data = serializer.data
+        except PermissionDenied as e:
+            data = str(e)
+            status_code = status.HTTP_403_FORBIDDEN
+            message = constants.MESSAGE_FORBIDDEN
+        except Exception as e:
+            data = str(e)
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            message = constants.MESSAGE_ERROR
+        finally:
+            response_data = custom_response(data, status_code, message)
+            return Response(response_data, status=status_code)
 
 
 class ActivateUserApiView(APIView):
@@ -125,13 +167,15 @@ class UserLoginView(APIView):
             if user is not None:
                 data = get_tokens_for_user(user)
             else:
-                status_response = status.HTTP_404_NOT_FOUND
-                message = constants.MESSAGE_NOT_FOUND
+                status_response = status.HTTP_401_UNAUTHORIZED
+                message = constants.MESSAGE_UNAUTHORIZED
                 data = {
-                    "errors": {
-                        "non_field_errors": ["Username or Password is not valid"]
-                    }
+                    "msg": "Contraseña o usuario incorrecto. Por favor, inténtelo de nuevo.",
                 }
+        except PermissionDenied as e:
+            status_response = status.HTTP_403_FORBIDDEN
+            message = constants.MESSAGE_FORBIDDEN
+            data = str(e)
         except Exception as e:
             status_response = status.HTTP_404_NOT_FOUND
             message = constants.MESSAGE_NOT_FOUND

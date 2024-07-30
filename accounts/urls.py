@@ -1,6 +1,8 @@
 from typing import Final
 from django.urls import path
 
+from rest_framework_simplejwt.views import TokenRefreshView
+
 from .views import (
     UserAPIView,
     ActivateUserApiView,
@@ -10,6 +12,7 @@ from .views import (
     DatosFiscalesAPIView,
     ContactoAPIView,
     ContactoListAPIView,
+    UserProfileAPIView,
 )
 
 from shared.constants import constants
@@ -28,6 +31,8 @@ urlpatterns = [
         name="activate",
     ),
     path(f"{constants.URL_USUARIO}/login", UserLoginView.as_view(), name="login"),
+    path(f"{constants.URL_USUARIO}/refresh", TokenRefreshView.as_view()),
+    path(f"{constants.URL_USUARIO}/perfil", UserProfileAPIView.as_view(), name="user-profile"),
     path(
         f"{constants.URL_USUARIO}/email-cambio-password/", SendPasswordResetEmailView.as_view(), name="email-reset-password"
     ),
