@@ -89,10 +89,10 @@ class UserLoginSerializer(serializers.Serializer):
             user = authenticate(username=username, password=password)
 
             if not user:
-                raise serializers.ValidationError("Username or Password is not valid")
+                raise PermissionError("Credenciales incorrectas")
 
         else:
-            raise serializers.ValidationError("Both username and password are required")
+            raise PermissionError("Debe ingresar un usuario y contraseña")
 
         attrs["user"] = user
         return attrs
