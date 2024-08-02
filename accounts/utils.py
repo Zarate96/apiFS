@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils.encoding import force_bytes
@@ -8,6 +10,7 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 from shared.constants import constants
 
+logger = logging.getLogger(__name__)
 
 class EmailHandler:
     '''
@@ -22,13 +25,14 @@ class EmailHandler:
                 body_template,
                 {
                     "user": user,
-                    "domain": current_site.domain,
+                    "domain": constants.FRONTED_URL,
                     "protocol": constants.PROTOCOL,
                     "uid": urlsafe_base64_encode(force_bytes(user.id)),
                     "token": PasswordResetTokenGenerator().make_token(user),
                 },
             )
             if not settings.TESTING:
+                logger.info(f"Sending email to {user.email}")
                 send_mail(
                     subject=email_subject,
                     message="",
@@ -37,6 +41,7 @@ class EmailHandler:
                     html_message=email_body,
                 )
         except Exception as e:
+            logger.error(f"Error sending email to {user.email}: {str(e)}")
             raise e
 
 

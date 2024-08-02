@@ -77,27 +77,6 @@ class MyUserSerializer(serializers.ModelSerializer):
         return user
 
 
-class UserLoginSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=255)
-    password = serializers.CharField(max_length=128, write_only=True)
-
-    def validate(self, attrs):
-        username = attrs.get("username")
-        password = attrs.get("password")
-
-        if username and password:
-            user = authenticate(username=username, password=password)
-
-            if not user:
-                raise serializers.ValidationError("Username or Password is not valid")
-
-        else:
-            raise serializers.ValidationError("Both username and password are required")
-
-        attrs["user"] = user
-        return attrs
-
-
 class SendPasswordResetEmailSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=255)
 
@@ -182,3 +161,22 @@ class ContactoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contactos
         exclude = ["user"]
+        
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MyUser
+        fields = '__all__'
+
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        
+        token['email'] = user.email
+        token['username'] = user.username
+        token['es_empresa'] = user.es_empresa
+        token['es_cliente'] = user.es_cliente
+        token['es_transportista'] = user.es_transportista
+
+        return token

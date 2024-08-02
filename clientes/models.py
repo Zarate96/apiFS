@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.text import slugify
 
 from accounts.models import MyUser
 
@@ -54,3 +55,41 @@ class Clientes(models.Model):
             if self.user.es_empresa
             else f"{self.nombre} {self.ape_pat} {self.ape_mat}"
         )
+    
+    @property
+    def has_domicilios(self):
+        return self.domicilios_set.exists()
+
+class Domicilios(models.Model):
+    user = models.ForeignKey(Clientes, on_delete=models.CASCADE)
+    nombre = models.CharField("Nombre para identificar domicilio", max_length=200)
+    calle = models.CharField("Calle", max_length=200)
+    num_ext = models.CharField("Numero exterior", max_length=200)
+    num_int = models.CharField("Numero interior", max_length=200, blank=True)
+    colonia = models.CharField("Colonia", max_length=200)
+    municipio = models.CharField("Municipio o alcadía", max_length=200)
+    cp = models.CharField("Código postal",max_length=200,)
+    estado = models.CharField("Estado", choices=constants.STATE_CHOICES, max_length=100)
+    referencias = models.TextField("Refrencias del domicilio")
+    longitud = models.FloatField("Longitud", blank=True)
+    latitud = models.FloatField("Latitud", blank=True)
+    es_valida = models.BooleanField("Es válido", default=False)
+    formato_google = models.CharField("Dirección completa", max_length=200, blank=True)
+    id_google = models.CharField("Google place ID", max_length=250, blank=True)
+    slug = models.SlugField(null=True, blank=True, max_length=250)
+    creado_at = models.DateTimeField(auto_now_add=True, editable=False)
+    modificado_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Domicilios"
+
+    def save(self, *args, **kwargs):
+        self.slug = slugify(f"{self.user.user.username}-{self.nombre}")
+        return super(Domicilios, self).save(*args, **kwargs)
+    
+    def __str__(self):
+        return f'{self.nombre} - {self.user.user.username}'
+    
+    @property
+    def direccion_completa(self):
+        return f'{self.calle } {self.num_ext} {self.num_int}, C.P  {self.cp}  {self.colonia}  {self.municipio},  {self.estado}'
