@@ -1,25 +1,28 @@
-from django.utils.encoding import force_str
-from django.utils.http import urlsafe_base64_decode
-
 from rest_framework import serializers
 from rest_framework.views import APIView
 from rest_framework import status, generics
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from django.http import Http404
+from django.utils.encoding import force_str
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ValidationError
+from django.utils.http import urlsafe_base64_decode
 
 from django_filters import rest_framework as filters
+
+from clientes.models import Clientes
+from transportistas.models import Transportistas
+from clientes.serializers import ClienteSerializer
+from transportistas.serializers import TransportistaSerializer
 
 from .models import MyUser, Contactos
 from .utils import send_activation_email
 from .serializers import (
     MyUserSerializer,
-    UserLoginSerializer,
     SendPasswordResetEmailSerializer,
     UserPasswordResetSerializer,
     DatosFiscalesSerializer,
@@ -41,7 +44,6 @@ def get_tokens_for_user(user):
     }
 
 
-from django.http import HttpResponse
 class UserAPIView(APIView):
     """
     API view for user registration.
@@ -92,36 +94,37 @@ class UserAPIView(APIView):
             status=status_code,
         )
 
-class UserProfileAPIView(APIView):
-    """
-    API view for client.
-    """
 
-    permission_classes = [IsAuthenticated, IsOwner]
+class UserProfileAPIView(generics.RetrieveUpdateAPIView):
+    permission_classes = [AllowAny]
 
-    def get(self, request) -> Response:
-        """
-        Handle GET requests for client.
-        """
-        status_code = status.HTTP_200_OK
-        message = constants.MESSAGE_OK
-        data = {}
-        try:
-            user = request.user
-            self.check_object_permissions(request, user)
-            serializer = MyUserSerializer(user)
-            data = serializer.data
-        except PermissionDenied as e:
-            data = str(e)
-            status_code = status.HTTP_403_FORBIDDEN
-            message = constants.MESSAGE_FORBIDDEN
-        except Exception as e:
-            data = str(e)
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-            message = constants.MESSAGE_ERROR
-        finally:
-            response_data = custom_response(data, status_code, message)
-            return Response(response_data, status=status_code)
+    def get_object(self):
+        user_id = self.kwargs["user_id"]
+        user = MyUser.objects.get(id=user_id)
+
+        if user.es_cliente:
+            try:
+                return Clientes.objects.get(user=user)
+            except Clientes.DoesNotExist:
+                raise NotFound("Cliente profile not found.")
+        elif user.es_transportista:
+            try:
+                return Transportistas.objects.get(user=user)
+            except Transportistas.DoesNotExist:
+                raise NotFound("Transportista profile not found.")
+        else:
+            raise NotFound("User profile not found.")
+
+    def get_serializer_class(self):
+        user_id = self.kwargs["user_id"]
+        user = MyUser.objects.get(id=user_id)
+
+        if user.es_cliente:
+            return ClienteSerializer
+        elif user.es_transportista:
+            return TransportistaSerializer
+        else:
+            raise NotFound("Serializer class not found.")
 
 
 class ActivateUserApiView(APIView):
@@ -149,39 +152,6 @@ class ActivateUserApiView(APIView):
             {}, status=status.HTTP_200_OK, message="User activated successfully"
         )
         return Response(response_data, status=status.HTTP_200_OK)
-
-
-class UserLoginView(APIView):
-    """
-    API view for user login.
-    """
-
-    def post(self, request, format=None) -> Response:
-        status_response = status.HTTP_200_OK
-        message = constants.MESSAGE_OK
-        try:
-            serializer = UserLoginSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            user = serializer.validated_data["user"]
-
-            if user is not None:
-                data = get_tokens_for_user(user)
-            else:
-                status_response = status.HTTP_401_UNAUTHORIZED
-                message = constants.MESSAGE_UNAUTHORIZED
-                data = {
-                    "msg": "Contraseña o usuario incorrecto. Por favor, inténtelo de nuevo.",
-                }
-        except PermissionDenied as e:
-            status_response = status.HTTP_403_FORBIDDEN
-            message = constants.MESSAGE_FORBIDDEN
-            data = str(e)
-        except Exception as e:
-            status_response = status.HTTP_404_NOT_FOUND
-            message = constants.MESSAGE_NOT_FOUND
-            data = str(e)
-        response_data = custom_response(data, status=status_response, message=message)
-        return Response(response_data, status=status_response)
 
 
 class SendPasswordResetEmailView(APIView):
@@ -275,9 +245,7 @@ class DatosFiscalesAPIView(APIView):
             serializer = DatosFiscalesSerializer(
                 user.datosfiscales, data=request.data, partial=True
             )
-            serializer.is_valid(
-                raise_exception=True
-            )  
+            serializer.is_valid(raise_exception=True)
             serializer.save()
             data = serializer.data
             status_code = status.HTTP_200_OK
@@ -450,3 +418,11 @@ class ContactoAPIView(APIView):
         finally:
             response_data = custom_response(data, status_code, message)
             return Response(response_data, status=status_code)
+
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import MyTokenObtainPairSerializer
+
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer

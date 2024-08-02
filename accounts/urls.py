@@ -6,13 +6,13 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     UserAPIView,
     ActivateUserApiView,
-    UserLoginView,
     SendPasswordResetEmailView,
     UserPasswordResetView,
     DatosFiscalesAPIView,
     ContactoAPIView,
     ContactoListAPIView,
     UserProfileAPIView,
+    MyTokenObtainPairView,
 )
 
 from shared.constants import constants
@@ -30,9 +30,9 @@ urlpatterns = [
         ActivateUserApiView.as_view(),
         name="activate",
     ),
-    path(f"{constants.URL_USUARIO}/login", UserLoginView.as_view(), name="login"),
+    path(f"{constants.URL_USUARIO}/token", MyTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path(f"{constants.URL_USUARIO}/refresh", TokenRefreshView.as_view()),
-    path(f"{constants.URL_USUARIO}/perfil", UserProfileAPIView.as_view(), name="user-profile"),
+    path(f"{constants.URL_USUARIO}/perfil/<user_id>", UserProfileAPIView.as_view(), name="user-profile"),
     path(
         f"{constants.URL_USUARIO}/email-cambio-password/", SendPasswordResetEmailView.as_view(), name="email-reset-password"
     ),
