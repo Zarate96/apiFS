@@ -14,7 +14,6 @@ class Constants(object):
     MESSAGE_FORBIDDEN: str = "Forbidden"
     MESSAGE_METHOD_NOT_ALLOWED: str = "Method not allowed"
     PROTOCOL: str = "http"
-    FRONTED_URL: str = "localhost:5173"
     STATE_CHOICES = (
         ("Aguascalientes", "Aguascalientes"),
         ("Baja California", "Baja California"),
@@ -60,4 +59,9 @@ class Constants(object):
     URL_TRANSPORTISTA: Final[str] = f"transportistas"
     URL_USUARIO: Final[str] = f"usuarios"
 
+    if settings.ENVIRONMENT == "local":
+        FRONTED_URL: Final[str] = "http://localhost:3000"
+    elif settings.ENVIRONMENT == "development":
+        FRONTED_URL: Final[str] = "http://74.208.98.114"
+        
 constants = Constants()
