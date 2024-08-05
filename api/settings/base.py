@@ -219,3 +219,6 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+#ENVIRONMENT CONFIG
+ENVIRONMENT = config("ENV", default="local")
